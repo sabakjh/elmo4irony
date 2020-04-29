@@ -93,14 +93,14 @@ def main():
     USE_POS = False
 
     # 此处生成语料库
-    corpus = ClassificationCorpus(config.corpora_dict, "riloff",
-                                  force_reload=True,
-                                  train_data_proportion=0.7,
-                                  dev_data_proportion=0.3,
-                                  batch_size=32,
-                                  lowercase=True,
-                                  use_pos=False,
-                                  max_length=58)
+    # corpus = ClassificationCorpus(config.corpora_dict, "riloff",
+    #                               force_reload=True,
+    #                               train_data_proportion=0.7,
+    #                               dev_data_proportion=0.3,
+    #                               batch_size=32,
+    #                               lowercase=True,
+    #                               use_pos=False,
+    #                               max_length=58)
     corpus = ClassificationCorpus(config.corpora_dict, hp.corpus,
                                   force_reload=hp.force_reload,
                                   train_data_proportion=hp.train_data_proportion,
