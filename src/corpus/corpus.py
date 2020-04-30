@@ -5,8 +5,10 @@ import os
 from ..utils.io import load_or_create
 from .batch_iterator import BatchIterator
 from .lang import Lang
-
+from allennlp.modules.elmo import Elmo, batch_to_ids
 from .. import config
+
+elmo = None
 
 
 class BaseCorpus(object):
@@ -35,7 +37,7 @@ class BaseCorpus(object):
 class ClassificationCorpus(BaseCorpus):
 
     # @profile(immediate=True)
-    def __init__(self, *args, max_length=None, use_pos=False, **kwargs):
+    def __init__(self, *args, max_length=None, embedding_method=None, use_pos=False, **kwargs):
         """args:
             paths_dict: a dict with two levels: <corpus_name>: <train/dev/rest>
             corpus_name: the <corpus_name> you want to use.
@@ -78,21 +80,25 @@ class ClassificationCorpus(BaseCorpus):
 
         self.label2id = {key: value for key, value in config.LABEL2ID.items()}
 
-        # 将句子转换为id 的列表（向量形式）
+        # 将句子转换为id 的列表（向量形式）(可能会使用预先训练的向量模型)
         self.train_examples = self._create_examples(
             self.train_sents,
             mode='train',
             prefix=self.corpus_name,
+            embedding_method=embedding_method,
+
         )
         self.dev_examples = self._create_examples(
             self.dev_sents,
             mode='dev',
             prefix=self.corpus_name,
+            embedding_method=embedding_method,
         )
         self.test_examples = self._create_examples(
             self.test_sents,
             mode='test',
             prefix=self.corpus_name,
+            embedding_method=embedding_method,
         )
 
         if self.use_pos:
@@ -107,6 +113,8 @@ class ClassificationCorpus(BaseCorpus):
         if max_length == None:
             max_length = max([len(i) for i in self.train_sents +
                               self.test_sents + self.dev_sents])
+        if max_length == None and embedding_method != None:
+            max_length = len(self.train_examples[0])
         self.max_length = max_length
         # 生成数据的batch generator
         self.train_batches = BatchIterator(
@@ -117,7 +125,9 @@ class ClassificationCorpus(BaseCorpus):
             batch_first=self.batch_first,
             use_chars=self.use_chars,
             use_pos=self.use_pos,
-            pad_size=max_length
+            pad_size=max_length,
+            embedding_method=embedding_method,
+
         )
 
         self.dev_batches = BatchIterator(
@@ -128,7 +138,9 @@ class ClassificationCorpus(BaseCorpus):
             batch_first=self.batch_first,
             use_chars=self.use_chars,
             use_pos=self.use_pos,
-            pad_size=max_length
+            pad_size=max_length,
+            embedding_method=embedding_method,
+
         )
 
         self.test_batches = BatchIterator(
@@ -139,7 +151,9 @@ class ClassificationCorpus(BaseCorpus):
             batch_first=self.batch_first,
             use_chars=self.use_chars,
             use_pos=self.use_pos,
-            pad_size=max_length
+            pad_size=max_length,
+            embedding_method=embedding_method,
+
         )
 
     @staticmethod
@@ -166,7 +180,7 @@ class ClassificationCorpus(BaseCorpus):
 
             example['pos_id_sequence'] = pos_examples[i]['sequence']
 
-    def _create_examples(self, sents, mode, prefix):
+    def _create_examples(self, sents, mode, prefix, embedding_method):
         """
         sents: list of strings
         mode: (string) train, dev or test
@@ -212,18 +226,28 @@ class ClassificationCorpus(BaseCorpus):
 
         ids = range(len(id_sents))
 
-        # 将id，其实第一个应该算是index， 原句子， 向量化的句子，char向量化的句子， 标签封装起来
+        # 此处加入elmo或者bert的embedding方式
+        if embedding_method[1] == "elmo":
+            elmo = embedding_method[0]
+            character_ids = batch_to_ids(sents)
+            embeddings = elmo(character_ids)
+
+        # 将id，其实第一个应该算是 index， 原句子， 向量化的句子，char向量化的句子， 标签封装起来
         examples = zip(ids,
                        sents,
                        id_sents,
                        char_id_sents,
-                       id_labels)
+                       id_labels,
+                       embeddings
+                       )
 
         examples = [{'id': ex[0],
                      'raw_sequence': ex[1],
                      'sequence': ex[2],
                      'char_sequence': ex[3],
-                     'label': ex[4]} for ex in examples]
+                     'label': ex[4],
+                     embedding_method[1]: ex[5],
+                     } for ex in examples]
 
         return examples
 
