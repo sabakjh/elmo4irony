@@ -33,7 +33,6 @@ class BaseTrainer:
         self.model = model
         self.corpus = corpus
         self.model.cuda()
-        self.model.eval()
         self.optimizer = optimizer
         self.loss_function = loss_function
         self.train_data = corpus.train_batches
@@ -43,11 +42,15 @@ class BaseTrainer:
 
 class Trainer(BaseTrainer):
     def __init__(self, model, corpus, optimizer, loss_function, print_period=100):
-        super(Trainer, self).__init__(model, corpus, optimizer, loss_function)
+        super(Trainer, self).__init__(model, corpus,
+                                      optimizer, loss_function, print_period)
 
-    def train(self, epoch, print_period=None):
+    def train(self, print_period=None):
+        self.model.train()
         total_loss = 0
         start = time.time()
+        if print_period == None:
+            print_period = self.print_period
         self.train_data.shuffle_examples()
         for batchId, batchIter in enumerate(self.train_data.gen()):
             x = batchIter["sequences"]
@@ -66,13 +69,14 @@ class Trainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
             total_loss += loss.data
-            if batchId % print_period:
+            if (batchId + 1) % print_period == 0:
                 print('batchid:{} time:{}s loss:{}'.format(
-                    batchId, time.time() - start, total_loss/print_period))
+                    batchId + 1, time.time() - start, total_loss/print_period))
                 total_loss = 0
                 start = time.time()
 
-    def test(self):
+    def test(self, epoch):
+        self.model.eval()
         self.test_data.shuffle_examples()
         start = time.time()
         total_loss = 0
@@ -103,12 +107,13 @@ class Trainer(BaseTrainer):
             # print(true_pos)
 
             batch_counter += 1
-        self.evaluate(true_pos, false_pos, true_neg, false_neg,
-                      start, total_loss, batch_counter)
+        print("Epoch {}".format(epoch))
+        return self.evaluate(true_pos, false_pos, true_neg, false_neg,
+                             start, total_loss, batch_counter)
 
     def evaluate(self, true_pos, false_pos, true_neg, false_neg, since, total_loss, batch_counter):
         print('-' * 15)
-        print('TP: %d\nTN: %d\nFP: %d\nFN: %d\nmark_counter: \n' %
+        print('TP: %d\nTN: %d\nFP: %d\nFN: %d\n' %
               (true_pos, true_neg, false_pos, false_neg))
         print('-' * 15)
         print('time: %.3f s\n loss: %.4f\n precision: %.4f\nrecall: %.4f\nf score: %.4f\naccuracy: %.4f'
@@ -118,8 +123,8 @@ class Trainer(BaseTrainer):
                   true_pos / (true_pos + false_pos + 1e-6),
                   true_pos / (true_pos + false_neg + 1e-6),
                   2 * true_pos / (2 * true_pos + false_pos + false_neg + 1e-6),
-                (true_pos + true_neg) /
-                  (true_neg + true_pos + false_neg + false_pos)
+                (true_pos + true_neg) / (true_neg +
+                                         true_pos + false_neg + false_pos + 1e-6)
               ))
         print('-' * 15)
         return 2 * true_pos / (2 * true_pos + false_pos + false_neg + 1e-6)
