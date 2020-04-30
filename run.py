@@ -206,6 +206,7 @@ def main():
             corpus.train_batches.shuffle_examples()
             eval_dict = trainer.evaluate(corpus.dev_batches, epoch, writer)
 
+            # 不同地lr更新方式
             if hp.training_schedule == 'decay':
                 optim_updated, new_lr = trainer.optimizer.updt_lr_accuracy(
                     epoch, eval_dict['accuracy'])
@@ -224,6 +225,7 @@ def main():
                     tqdm.write(f'Learning rate decayed to {new_lr}')
 
             accuracy = eval_dict['accuracy']
+            # 只有在出现更优数据的时候才会更新记录
             if not best_accuracy or accuracy > best_accuracy:
                 best_accuracy = accuracy
                 logger.update_results({'best_valid_acc': best_accuracy,

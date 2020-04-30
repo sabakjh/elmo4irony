@@ -107,7 +107,7 @@ class ClassificationCorpus(BaseCorpus):
         if max_length == None:
             max_length = max([len(i) for i in self.train_sents +
                               self.test_sents + self.dev_sents])
-
+        self.max_length = max_length
         # 生成数据的batch generator
         self.train_batches = BatchIterator(
             self.train_examples,
