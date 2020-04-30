@@ -36,8 +36,8 @@ class BaseTrainer:
         self.model.eval()
         self.optimizer = optimizer
         self.loss_function = loss_function
-        self.train_data = corpus.train_batches.gen()
-        self.test_data = corpus.test_batches.gen()
+        self.train_data = corpus.train_batches
+        self.test_data = corpus.test_batches
         self.print_period = print_period
 
 
@@ -48,7 +48,8 @@ class Trainer(BaseTrainer):
     def train(self, epoch, print_period=None):
         total_loss = 0
         start = time.time()
-        for batchId, batchIter in enumerate(self.train_data):
+        self.train_data.shuffle_examples()
+        for batchId, batchIter in enumerate(self.train_data.gen()):
             x = batchIter["sequences"]
             y = batchIter["labels"]
             x = torch.LongTensor(x)
@@ -72,15 +73,15 @@ class Trainer(BaseTrainer):
                 start = time.time()
 
     def test(self):
+        self.test_data.shuffle_examples()
         start = time.time()
         total_loss = 0
         true_pos = 0
         false_pos = 0
         true_neg = 0
         false_neg = 0
-
         batch_counter = 0
-        for batchIter in self.test_data:
+        for batchIter in self.test_data.gen():
             x = batchIter["sequences"]
             y = batchIter["labels"]
             x = torch.LongTensor(x)
