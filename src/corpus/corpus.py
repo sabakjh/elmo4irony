@@ -37,7 +37,7 @@ class BaseCorpus(object):
 class ClassificationCorpus(BaseCorpus):
 
     # @profile(immediate=True)
-    def __init__(self, *args, max_length=None, embedding_method=None, use_pos=False, **kwargs):
+    def __init__(self, *args, max_length=None, embedding_method=None, use_pos=False, pretrained=False, **kwargs):
         """args:
             paths_dict: a dict with two levels: <corpus_name>: <train/dev/rest>
             corpus_name: the <corpus_name> you want to use.
@@ -86,6 +86,7 @@ class ClassificationCorpus(BaseCorpus):
             mode='train',
             prefix=self.corpus_name,
             embedding_method=embedding_method,
+            pretrained=pretrained,
 
         )
         self.dev_examples = self._create_examples(
@@ -93,12 +94,14 @@ class ClassificationCorpus(BaseCorpus):
             mode='dev',
             prefix=self.corpus_name,
             embedding_method=embedding_method,
+            pretrained=pretrained,
         )
         self.test_examples = self._create_examples(
             self.test_sents,
             mode='test',
             prefix=self.corpus_name,
             embedding_method=embedding_method,
+            pretrained=pretrained,
         )
 
         if self.use_pos:
@@ -113,8 +116,7 @@ class ClassificationCorpus(BaseCorpus):
         if max_length == None:
             max_length = max([len(i) for i in self.train_sents +
                               self.test_sents + self.dev_sents])
-        if max_length == None and embedding_method != None:
-            max_length = len(self.train_examples[0])
+
         self.max_length = max_length
         # 生成数据的batch generator
         self.train_batches = BatchIterator(
@@ -180,7 +182,7 @@ class ClassificationCorpus(BaseCorpus):
 
             example['pos_id_sequence'] = pos_examples[i]['sequence']
 
-    def _create_examples(self, sents, mode, prefix, embedding_method):
+    def _create_examples(self, sents, mode, prefix, embedding_method, pretrained):
         """
         sents: list of strings
         mode: (string) train, dev or test
@@ -201,10 +203,14 @@ class ClassificationCorpus(BaseCorpus):
         )
 
         # 导入或者新建一个example， 生产方法就是调用lang.sents2ids,其实就是利用lang来转换
-        id_sents = load_or_create(id_sents_pickle_path,
-                                  self.lang.sents2ids,
-                                  sents,
-                                  force_reload=self.force_reload)
+        # 如果导入的是预训练模型，则并不需要转换
+        if pretrained == None:
+            id_sents = load_or_create(id_sents_pickle_path,
+                                      self.lang.sents2ids,
+                                      sents,
+                                      force_reload=self.force_reload)
+        else:
+            id_sents = sents
 
         chars_pickle_path = os.path.join(
             config.CACHE_PATH,
@@ -226,19 +232,12 @@ class ClassificationCorpus(BaseCorpus):
 
         ids = range(len(id_sents))
 
-        # 此处加入elmo或者bert的embedding方式
-        if embedding_method[1] == "elmo":
-            elmo = embedding_method[0]
-            character_ids = batch_to_ids(sents)
-            embeddings = elmo(character_ids)
-
         # 将id，其实第一个应该算是 index， 原句子， 向量化的句子，char向量化的句子， 标签封装起来
         examples = zip(ids,
                        sents,
                        id_sents,
                        char_id_sents,
                        id_labels,
-                       embeddings
                        )
 
         examples = [{'id': ex[0],
@@ -246,7 +245,6 @@ class ClassificationCorpus(BaseCorpus):
                      'sequence': ex[2],
                      'char_sequence': ex[3],
                      'label': ex[4],
-                     embedding_method[1]: ex[5],
                      } for ex in examples]
 
         return examples

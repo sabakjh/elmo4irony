@@ -8,6 +8,7 @@ import argparse
 #     # PREPROCESSED_DATA_PATH,
 #     URL_TOKEN, USR_TOKEN, HASHTAG_TOKEN)
 from twokenize import tokenizeRawTweetText
+from pytorch_pretrained_bert import BertTokenizer
 PREPROCESSED_DATA_PATH = r".\datasets\PREPROCESSED"
 URL_TOKEN = '__URL__'
 USR_TOKEN = '__USERNAME__'
@@ -44,7 +45,7 @@ def open_prepared_file(filepath):
     return strings, labels
 
 
-def preprocess(strings, labels, min_len=None, max_len=None):
+def preprocess(strings, labels, min_len=None, max_len=None, tokenize=tokenizeRawTweetText):
 
     strings = [re.sub(url_regex, URL_TOKEN, string)
                for string in strings]
@@ -52,7 +53,7 @@ def preprocess(strings, labels, min_len=None, max_len=None):
     strings = [re.sub(user_regex, USR_TOKEN, string)
                for string in strings]
 
-    tokenized_strings = [tokenizeRawTweetText(string)
+    tokenized_strings = [tokenize(string)
                          for string in strings]
 
     filtered_tokenized_strings = []
@@ -94,6 +95,8 @@ if __name__ == "__main__":
     parser.add_argument('--max_len', type=int, default=None,
                         help='Maximum length to add to dataset')
 
+    parser.add_argument('--tokenizer', type=str, default=None)
+
     args = parser.parse_args()
 
     sys.stdout.write(f"Preprocessing {args.dataset}...\n")
@@ -113,17 +116,27 @@ if __name__ == "__main__":
     #         train_strings += strings_i
     #         train_labels += labels_i
 
+    # 指定tokenize（根据输入参数）
+    tokenizer = tokenizeRawTweetText
+    if args.tokenizer == "elmo":
+        pass
+    if args.tokenizer == "bert":
+        tokenizer = BertTokenizer.from_pretrained(
+            "bert-base-uncased").tokenize
+
     train_examples, train_labels = preprocess(train_strings,
                                               train_labels,
                                               min_len=args.min_len,
-                                              max_len=args.max_len)
+                                              max_len=args.max_len,
+                                              tokenize=tokenizer)
 
     valid_strings, valid_labels = \
         open_prepared_file(os.path.join(dataset_path, 'dev.txt'))
     valid_examples, valid_strings = preprocess(valid_strings,
                                                valid_strings,
                                                min_len=args.min_len,
-                                               max_len=args.max_len)
+                                               max_len=args.max_len,
+                                               tokenize=tokenizer)
 
     test_strings, test_labels = \
         open_prepared_file(os.path.join(dataset_path, 'test.txt'))
@@ -131,7 +144,8 @@ if __name__ == "__main__":
     test_examples, test_labels = preprocess(test_strings,
                                             test_labels,
                                             min_len=args.min_len,
-                                            max_len=args.max_len)
+                                            max_len=args.max_len,
+                                            tokenize=tokenizer)
 
     name = args.name if args.name else args.dataset
 
@@ -140,6 +154,9 @@ if __name__ == "__main__":
 
     if args.max_len:
         name = '{0}_max_{1}'.format(name, args.max_len)
+
+    if args.tokenizer:
+        name = '{0}_{1}'.format(name, args.tokenizer)
 
     output_path = os.path.join(PREPROCESSED_DATA_PATH, name)
 
