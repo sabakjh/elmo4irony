@@ -214,7 +214,7 @@ class ClassificationCorpus(BaseCorpus):
             tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
             id_sents = load_or_create(
                 id_sents_pickle_path,
-                tokenizer.convert_tokens_to_ids,
+                lambda x: [tokenizer.convert_tokens_to_ids(i) for i in x],
                 sents,
                 force_reload=self.force_reload
             )
