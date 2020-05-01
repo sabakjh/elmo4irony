@@ -128,7 +128,7 @@ class ClassificationCorpus(BaseCorpus):
             use_chars=self.use_chars,
             use_pos=self.use_pos,
             pad_size=max_length,
-            embedding_method=embedding_method,
+            # embedding_method=embedding_method,
 
         )
 
@@ -141,7 +141,7 @@ class ClassificationCorpus(BaseCorpus):
             use_chars=self.use_chars,
             use_pos=self.use_pos,
             pad_size=max_length,
-            embedding_method=embedding_method,
+            # embedding_method=embedding_method,
 
         )
 
@@ -154,7 +154,7 @@ class ClassificationCorpus(BaseCorpus):
             use_chars=self.use_chars,
             use_pos=self.use_pos,
             pad_size=max_length,
-            embedding_method=embedding_method,
+            # embedding_method=embedding_method,
 
         )
 
