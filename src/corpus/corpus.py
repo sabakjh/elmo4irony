@@ -4,6 +4,7 @@ import os
 
 from ..utils.io import load_or_create
 from .batch_iterator import BatchIterator
+from pytorch_pretrained_bert import BertTokenizer
 from .lang import Lang
 # from allennlp.modules.elmo import Elmo, batch_to_ids
 from .. import config
@@ -209,8 +210,14 @@ class ClassificationCorpus(BaseCorpus):
                                       self.lang.sents2ids,
                                       sents,
                                       force_reload=self.force_reload)
-        else:
-            id_sents = sents
+        elif pretrained == True and embedding_method == "bert":
+            tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+            id_sents = load_or_create(
+                id_sents_pickle_path,
+                tokenizer.convert_tokens_to_ids,
+                sents,
+                force_reload=self.force_reload
+            )
 
         chars_pickle_path = os.path.join(
             config.CACHE_PATH,
