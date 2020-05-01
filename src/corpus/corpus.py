@@ -5,7 +5,7 @@ import os
 from ..utils.io import load_or_create
 from .batch_iterator import BatchIterator
 from .lang import Lang
-from allennlp.modules.elmo import Elmo, batch_to_ids
+# from allennlp.modules.elmo import Elmo, batch_to_ids
 from .. import config
 
 elmo = None
