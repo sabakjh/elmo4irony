@@ -30,6 +30,13 @@ def filter_hashtags(tokens):
     return tokens
 
 
+def filter_hashtags_sentence(string):
+    string = string.lower()
+    for tag in IRONIC_HASHTAGS:
+        string = string.replace(tag, '')
+    return string
+
+
 def open_prepared_file(filepath):
     strings = []
     labels = []
@@ -52,6 +59,8 @@ def preprocess(strings, labels, min_len=None, max_len=None, tokenize=tokenizeRaw
 
     strings = [re.sub(user_regex, USR_TOKEN, string)
                for string in strings]
+
+    strings = [filter_hashtags_sentence(string) for string in strings]
 
     tokenized_strings = [tokenize(string)
                          for string in strings]

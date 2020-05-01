@@ -57,9 +57,12 @@ class IESTBatch(BaseNLPBatch):
         ids = [example['id'] for example in self.examples]
 
         sequences = [example['sequence'] for example in self.examples]
-        padded_sequences, sent_lengths, masks = self._pad1d(sequences, dim1_pad=self.pad_size)
+        print([len(i) for i in sequences])
+        padded_sequences, sent_lengths, masks = self._pad1d(
+            sequences, dim1_pad=self.pad_size)
 
-        self['raw_sequences'] = [example['raw_sequence'] for example in self.examples]
+        self['raw_sequences'] = [example['raw_sequence']
+                                 for example in self.examples]
         self['raw_sequence_lengths'] = np.array([len(example['raw_sequence'])
                                                  for example in self.examples])
         self['sequences'] = padded_sequences
@@ -73,7 +76,8 @@ class IESTBatch(BaseNLPBatch):
         self['ids'] = ids
 
         if self.use_pos:
-            pos_sequences = [example['pos_id_sequence'] for example in self.examples]
+            pos_sequences = [example['pos_id_sequence']
+                             for example in self.examples]
             self['pos_sequences'], _, _ = self._pad1d(pos_sequences)
 
         if self.use_chars:
@@ -110,7 +114,6 @@ class BatchIterator(object):
     def __init__(self, examples, batch_size, data_proportion=1.0,
                  shuffle=False, batch_first=False, use_chars=False,
                  use_pos=False, pad_size=32):
-
         """Create batches of length batch_size from the examples
         Args:
             examples: The data to be batched. Independent from corpus or model
@@ -146,7 +149,8 @@ class BatchIterator(object):
         self.labels = []
         self.ids = []
 
-        self.num_batches = (len(self.examples_subset) + batch_size - 1) // batch_size
+        self.num_batches = (len(self.examples_subset) +
+                            batch_size - 1) // batch_size
 
     def __getitem__(self, index):
         assert index < self.num_batches, ("Index is greater "
@@ -171,17 +175,17 @@ class BatchIterator(object):
         random.shuffle(self.examples_subset)
 
     def gen(self):
-      index = 0
-      while(True):
-          examples_slice = self.examples_subset[index * self.batch_size:
-                                              (index + 1) * self.batch_size]
-          if len(examples_slice)  == 0:
-              break
+        index = 0
+        while(True):
+            examples_slice = self.examples_subset[index * self.batch_size:
+                                                  (index + 1) * self.batch_size]
+            if len(examples_slice) == 0:
+                break
 
-          yield IESTBatch(examples_slice,
-                          batch_size=self.batch_size,
-                          batch_first=self.batch_first,
-                          use_chars=self.use_chars,
-                          use_pos=self.use_pos,
-                          pad_size=self.pad_size)
-          index += 1
+            yield IESTBatch(examples_slice,
+                            batch_size=self.batch_size,
+                            batch_first=self.batch_first,
+                            use_chars=self.use_chars,
+                            use_pos=self.use_pos,
+                            pad_size=self.pad_size)
+            index += 1
