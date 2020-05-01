@@ -183,7 +183,7 @@ class ClassificationCorpus(BaseCorpus):
 
             example['pos_id_sequence'] = pos_examples[i]['sequence']
 
-    def _create_examples(self, sents, mode, prefix, embedding_method, pretrained):
+    def _create_examples(self, sents, mode, prefix, embedding_method, pretrained=None):
         """
         sents: list of strings
         mode: (string) train, dev or test
