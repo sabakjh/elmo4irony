@@ -132,6 +132,9 @@ if __name__ == "__main__":
     if args.tokenizer == "bert":
         tokenizer = BertTokenizer.from_pretrained(
             "bert-base-uncased").tokenize
+    if args.tokenizer == "bert_twitter":
+        tokenizer = BertTokenizer.from_pretrained(
+            "ssun32/bert_twitter_turkle").tokenize
 
     train_examples, train_labels = preprocess(train_strings,
                                               train_labels,
