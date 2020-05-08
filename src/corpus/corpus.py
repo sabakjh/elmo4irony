@@ -1,20 +1,22 @@
+from .. import config
+import torch
+from .lang import Lang
+from pytorch_pretrained_bert import BertTokenizer
+from .batch_iterator import BatchIterator
+from ..utils.io import load_or_create
 import os
 
-# from profilehooks import profile
+# os.chdir("./src/corpus/")
 
-from ..utils.io import load_or_create
-from .batch_iterator import BatchIterator
-from pytorch_pretrained_bert import BertTokenizer
-from .lang import Lang
-import torch
+
+# from profilehooks import profile
 # from allennlp.modules.elmo import Elmo, batch_to_ids
-from .. import config
 
 elmo = None
 
 
 class BaseCorpus(object):
-    def __init__(self, paths_dict, corpus_name, use_chars=True,
+    def __init__(self, paths_dict, corpus_name, use_chars=False,
                  force_reload=False, train_data_proportion=1.0,
                  dev_data_proportion=1.0, batch_size=64,
                  shuffle_batches=False, batch_first=True, lowercase=False):
@@ -56,19 +58,38 @@ class ClassificationCorpus(BaseCorpus):
         # This assumes the data come nicely separated by spaces. That's the
         # task of the tokenizer who should be called elsewhere
         # 按照空格分开token
-        self.train_sents = [s.rstrip().split() for s in train_sents]
+        if embedding_method != "roberta":
+            self.train_sents = [s.rstrip().split() for s in train_sents]
 
-        dev_sents = open(self.paths['dev'], encoding="utf-8").readlines()
-        self.dev_sents = [s.rstrip().split() for s in dev_sents]
+            dev_sents = open(self.paths['dev'], encoding="utf-8").readlines()
+            self.dev_sents = [s.rstrip().split() for s in dev_sents]
 
-        test_sents = open(self.paths['test'], encoding="utf-8").readlines()
-        self.test_sents = [s.rstrip().split() for s in test_sents]
+            test_sents = open(self.paths['test'], encoding="utf-8").readlines()
+            self.test_sents = [s.rstrip().split() for s in test_sents]
 
-        if self.lowercase:
-            self.train_sents = [[t.lower() for t in s]
-                                for s in self.train_sents]
-            self.dev_sents = [[t.lower() for t in s] for s in self.dev_sents]
-            self.test_sents = [[t.lower() for t in s] for s in self.test_sents]
+            if self.lowercase:
+                self.train_sents = [[t.lower() for t in s]
+                                    for s in self.train_sents]
+                self.dev_sents = [[t.lower() for t in s]
+                                  for s in self.dev_sents]
+                self.test_sents = [[t.lower() for t in s]
+                                   for s in self.test_sents]
+        else:
+            self.train_sents = train_sents
+
+            self.dev_sents = open(
+                self.paths['dev'], encoding="utf-8").readlines()
+
+            self.test_sents = open(
+                self.paths['test'], encoding="utf-8").readlines()
+
+            if self.lowercase:
+                self.train_sents = [s.lower()
+                                    for s in self.train_sents]
+                self.dev_sents = [s.lower()
+                                  for s in self.dev_sents]
+                self.test_sents = [s.lower()
+                                   for s in self.test_sents]
 
         # 生成语言字典文件地址
         lang_pickle_path = os.path.join(config.CACHE_PATH,
@@ -81,6 +102,7 @@ class ClassificationCorpus(BaseCorpus):
                                    force_reload=self.force_reload)
 
         self.label2id = {key: value for key, value in config.LABEL2ID.items()}
+        print("here is the train_sents 1", train_sents[0])
 
         # 将句子转换为id 的列表（向量形式）(可能会使用预先训练的向量模型)
         self.train_examples = self._create_examples(
@@ -203,7 +225,7 @@ class ClassificationCorpus(BaseCorpus):
             config.CACHE_PATH,
             prefix + '_' + mode + '.pkl',
         )
-
+        print("this is examples train_sents", sents[0])
         # 导入或者新建一个example， 生产方法就是调用lang.sents2ids,其实就是利用lang来转换
         # 如果导入的是预训练模型，则并不需要转换
         if pretrained == None:
@@ -219,7 +241,7 @@ class ClassificationCorpus(BaseCorpus):
                 sents,
                 force_reload=self.force_reload
             )
-        elif embedding_method == "roberta":
+        if embedding_method == "roberta":
             roberta = torch.hub.load("pytorch/fairseq", "roberta.base")
             tokenizer = roberta.encode
             id_sents = load_or_create(id_sents_pickle_path,
@@ -227,16 +249,17 @@ class ClassificationCorpus(BaseCorpus):
                                       sents,
                                       force_reload=self.force_reload,
                                       )
-
+            print("id sents here00", id_sents[0])
         chars_pickle_path = os.path.join(
             config.CACHE_PATH,
             prefix + '_' + mode + '_chars.pkl',
         )
 
-        char_id_sents = load_or_create(chars_pickle_path,
-                                       self.lang.sents2char_ids,
-                                       sents,
-                                       force_reload=self.force_reload)
+        char_id_sents = [[0] for i in range(len(id_sents))]
+        # load_or_create(chars_pickle_path,
+        #                self.lang.sents2char_ids,
+        #                sents,
+        #                force_reload=self.force_reload)
 
         #  FIXME: Assuming all 3 modes will have labels. This might not be the
         # case for test data <2018-06-29 10:49:29, Jorge Balazs>
@@ -355,3 +378,30 @@ class POSCorpus(BaseCorpus):
             assert len(example['raw_sequence']) == len(example['sequence'])
 
         return examples
+
+
+if __name__ == "__main__":
+    configuration = {
+        "embedding_size": 100,
+        "hidden_size": 100,
+        "n_layers": 3,
+        "dropout": 0.5,
+        "bidirectional": True,
+        "linear": [100, 100, 2],
+        "learning_rate": 0.001,
+        "sentence_length": 200,
+        "sent_dropout": 0.1,
+        "word_dropout": 0.1,
+        "epoch": 100
+    }
+    batch_size = 32
+    corpus = ClassificationCorpus(config.corpora_dict, "palek_bert",
+                                  force_reload=True,
+                                  train_data_proportion=0.8,
+                                  dev_data_proportion=0.2,
+                                  batch_size=batch_size,
+                                  lowercase=False,
+                                  use_pos=False,
+                                  max_length=configuration["sentence_length"],
+                                  embedding_method="roberta",
+                                  pretrained=True)
