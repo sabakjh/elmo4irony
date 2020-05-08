@@ -6,6 +6,7 @@ from ..utils.io import load_or_create
 from .batch_iterator import BatchIterator
 from pytorch_pretrained_bert import BertTokenizer
 from .lang import Lang
+import torch
 # from allennlp.modules.elmo import Elmo, batch_to_ids
 from .. import config
 
@@ -218,6 +219,14 @@ class ClassificationCorpus(BaseCorpus):
                 sents,
                 force_reload=self.force_reload
             )
+        elif embedding_method == "roberta":
+            roberta = torch.hub.load("pytorch/fairseq", "roberta.base")
+            tokenizer = roberta.encode
+            id_sents = load_or_create(id_sents_pickle_path,
+                                      lambda x: [tokenizer(i) for i in x],
+                                      sents,
+                                      force_reload=self.force_reload,
+                                      )
 
         chars_pickle_path = os.path.join(
             config.CACHE_PATH,
